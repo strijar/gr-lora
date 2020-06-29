@@ -22,12 +22,6 @@
 ########################################################################
 include(GrPlatform) #define LIB_SUFFIX
 
-include_directories(${Boost_INCLUDE_DIR}
-                    ${VOLK_INCLUDE_DIRS}
-)
-link_directories(${Boost_LIBRARY_DIRS}
-)
-
 list(APPEND lora_sources
     demod_impl.cc
     decode_impl.cc
@@ -48,7 +42,12 @@ list(APPEND lora_libs
 )
 
 add_library(gnuradio-lora SHARED ${lora_sources})
-target_link_libraries(gnuradio-lora ${lora_libs})
+target_link_libraries(gnuradio-lora gnuradio::gnuradio-runtime gnuradio::gnuradio-blocks gnuradio::gnuradio-filter)
+target_include_directories(gnuradio-lora
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+    PUBLIC $<BUILD_INTERFACE:${Boost_INCLUDE_DIR}>
+    PUBLIC $<INSTALL_INTERFACE:include>
+  )
 set_target_properties(gnuradio-lora PROPERTIES DEFINE_SYMBOL "gnuradio_lora_EXPORTS")
 
 if(APPLE)
@@ -60,31 +59,32 @@ endif(APPLE)
 ########################################################################
 # Install built library files
 ########################################################################
-install(TARGETS gnuradio-lora
-    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
-    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
-    RUNTIME DESTINATION bin              # .dll file
-)
+include(GrMiscUtils)
+GR_LIBRARY_FOO(gnuradio-lora RUNTIME_COMPONENT "lora_runtime" DEVEL_COMPONENT "lora_devel")
 
 ########################################################################
 # Build and register unit test
 ########################################################################
 include(GrTest)
 
-include_directories(${CPPUNIT_INCLUDE_DIRS})
+# If your unit tests require special include paths, add them here
+# include_directories()
 
 list(APPEND test_lora_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/test_lora.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/qa_lora.cc
 )
 
-add_executable(test-lora ${test_lora_sources})
+# Anything we need to link to for the unit tests go here
+list(APPEND GR_TEST_TARGET_DEPS gnuradio-lora)
 
-target_link_libraries(
-  test-lora
-  ${lora_libs}
-  ${CPPUNIT_LIBRARIES}
-  gnuradio-lora
-)
+if(NOT test_foo_sources)
+    MESSAGE(STATUS "No C++ unit tests... skipping")
+    return()
+endif(NOT test_foo_sources)
 
-GR_ADD_TEST(test_lora test-lora)
+foreach(qa_file ${test_lora_sources})
+    GR_ADD_CPP_TEST("lora_${qa_file}"
+        ${CMAKE_CURRENT_SOURCE_DIR}/${qa_file}
+    )
+endforeach(qa_file)

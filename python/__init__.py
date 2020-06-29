@@ -26,7 +26,7 @@ description here (python/__init__.py).
 # import swig generated symbols into the lora namespace
 try:
 	# this might fail if the module is python-only
-	from lora_swig import *
+	from .lora_swig import *
 except ImportError:
 	pass
 
